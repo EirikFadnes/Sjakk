@@ -91,14 +91,40 @@ class Board:
         if not self.is_on_board(destination):
             print("Destination is off the board.")
             return False
-
-        if moving_piece.is_valid_move(origin, destination, self): 
-            return True 
-        else: 
+        
+        if not moving_piece.is_valid_move(origin, destination, self):
             print("Invalid move for the piece.")
             return False
 
+        if self.team_in_check == self.team_to_move and not self.can_move_uncheck(origin, destination):
+            return False
+
+        # If all checks pass, the move is valid
+        return True
+    
+
+    def can_move_uncheck(self, origin, destination):
+        moving_piece = self.get_piece(origin)
+        target_piece = self.get_piece(destination)
         
+        # Simulate the move
+        self.board_state[destination] = moving_piece
+        self.board_state[origin] = None
+
+        # Check if still ckecked
+        king_position = self.find_king(self.team_to_move)
+        still_checked = self.check_if_checked(king_position)
+
+        # Undo move
+        self.board_state[origin] = moving_piece
+        self.board_state[destination] = target_piece
+
+        if still_checked:
+            return False
+        else: 
+            return True
+
+
     def increment_turn(self):
         self.turn += 1
         # Swap teams
@@ -150,9 +176,10 @@ class Board:
         return False  # The king is not threatened
     
         
-    def king_is_checked(self):
+    def update_team_in_check(self):
         king_position = self.find_king(self.team_to_move)
-        return self.check_if_checked(king_position)
+        if self.check_if_checked(king_position):
+            self.team_in_check = self.team_to_move
     
 
     def get_king_moves(self, king_position):
@@ -213,6 +240,7 @@ class Board:
     def move_piece(self, origin, destination):
         print(f"Orgin: {origin}")
         print(f"Destination: {destination}")
+        self.update_team_in_check()
         moving_piece = self.get_piece(origin)
         if not moving_piece:
             print("No piece to move at the origin.")
@@ -229,7 +257,6 @@ class Board:
             # Perform the move
             self.board_state[destination] = moving_piece
             del self.board_state[origin]
-            self.king_is_checked()
             self.increment_turn()
             self.display()
             return True
